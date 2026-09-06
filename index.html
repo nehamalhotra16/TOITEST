@@ -217,10 +217,10 @@ async function loadData(){
     const header = rows[0].map(h=>h.trim());
     const idx = name => header.indexOf(name);
     const iFY=idx("Query[Fiscal_Year]"), iMonth=idx("Query[Calendar_month_Desc]"), iJacket=idx("Query[GNP_Jacket_Flag]"),
-          iFeature=idx("sub-category"), iAdvName=idx("Query[Advertiser_Name]"), iJcode=idx("j code"),
-          iBU=idx("BU_Description"), iInventory=idx("INVENTORY"),
-          iPubDate=idx("publishing_Date"), iClient=idx("CLIENT_GROUP_NAME"), iRate=idx("Query[rate_code_desc]"),
-          iSize=idx("Query[Size_of_Ad]"), iComponent=idx("Query[ISSUE_COMPONENT_DESC]"), iPage=idx("Query[Page_in_Issue]"),
+          iFeature=idx("sub-category"), iAdvName=idx("Query[Advertiser_Name]"), iJcode=idx("J code"),
+          iBU=idx("BU"), iInventory=idx("INVENTORY"),
+          iPubDate=idx("publishing_Date"), iClient=idx("CLIENT_GROUP_NAME"), iRate=idx("Query[tcc]"),
+          iSize=idx("Size_of_Ad"), iComponent=idx("Query[ISSUE_COMPONENT_DESC]"), iPage=idx("Query[Page_in_Issue]"),
           iRevenue=idx("Revenue");
 
     const out=[];
