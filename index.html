@@ -169,7 +169,6 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 <div class="card"><h3>Management signals</h3><div class="signal" id="signals"></div></div>
 <div class="card full"><h3>Date-wise pull-out detail <span>Revenue / Records show the group total. Click the row to expand ALL source records.</span></h3>
 <div class="tablebox"><table><thead><tr><th></th><th>Date</th><th>Edition (BU)</th><th>Feature</th><th>J Code</th><th>Pages</th><th>Jacket</th><th>Revenue</th><th>Records</th></tr></thead><tbody id="detail"></tbody></table></div></div>
-<div class="card full"><h3>Post-facto profitability <span>PO integration placeholder</span></h3><div class="signal">PO Value → DVC → Contribution → Profit % → Variance vs committed rate. Add PO data to enable this section.</div></div>
 </div>
 <div class="foot">Live data source: Google Sheets published feed. Edition column reflects each record's Business Unit (BU). Revenue is shown as reported in the source feed; individual underlying records are never collapsed or hidden when a summary row is expanded.</div>
 </div>
@@ -337,6 +336,7 @@ function buildEditionMsel(vals){
   });
   $("editionAll").onclick=()=>{S.edition=[...vals]; refresh(); render();};
   $("editionNone").onclick=()=>{S.edition=[]; refresh(); render();};
+  panel.onclick=e=>e.stopPropagation();
   const searchEl=$("editionSearch");
   searchEl.oninput=()=>{ editionSearchQuery=searchEl.value; applyEditionSearchFilter(); };
   applyEditionSearchFilter();
