@@ -368,7 +368,7 @@ $("detail").innerHTML=Object.values(groups).sort((a,b)=>b.date.localeCompare(a.d
 <tr id="d${i}" class="detailrow"><td colspan="9"><div class="inner"><table><thead><tr><th>#</th><th>Advertiser</th><th>Client</th><th>Inventory</th><th>Size / FPHP</th><th>Page</th><th>Jacket</th><th>Rate Code</th><th>Revenue</th></tr></thead><tbody>${g.records.map((r,j)=>`<tr><td>${j+1}</td><td>${esc(r.advertiser)}</td><td>${esc(r.client)}</td><td>${esc(r.inventory)}</td><td>${esc(r.size)}</td><td>${esc(r.page)}</td><td>${esc(r.jacket)}</td><td>${esc(r.rate)}</td><td>${money(r.revenue)}</td></tr>`).join("")}</tbody></table></div></td></tr>`).join("")}
 function toggle(i){let d=$("d"+i),e=$("ex"+i),show=d.classList.toggle("show");e.textContent=show?"−":"+"}
 ["fy","q","month","date","feature"].forEach(id=>$(id).onchange=()=>{S[id]=$(id).value;if(id=="fy"){S.q=S.month=S.date="ALL"}if(id=="q"){S.month=S.date="ALL"}if(id=="month")S.date="ALL";S.jacket=null;refresh();render()});
-$("search").oninput=e=>{S.search=e.target.value;render()};$("reset").onclick=()=>{Object.assign(S,{fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:[],feature:"ALL",search:"",jacket:null});$("search").value="";refresh();render()};
+$("search").oninput=e=>{S.search=e.target.value;render()};$("reset").onclick=()=>{Object.assign(S,{fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:[],feature:"ALL",search:"",jacket:null});$("search").value="";editionSearchQuery="";refresh();render()};
 $("retryBtn").onclick=loadData;
 
 loadData();
