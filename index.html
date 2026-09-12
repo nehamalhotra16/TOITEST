@@ -95,6 +95,16 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 .retry-btn{margin-top:12px;display:inline-block;width:auto;padding:8px 18px}
 .hidden{display:none !important}
 
+.mselwrap{position:relative}
+.mselbtn{text-align:left;cursor:pointer;background:#fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%2364748b" d="M7 10l5 5 5-5z"/></svg>') no-repeat right 8px center;background-size:14px;padding-right:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mselpanel{display:none;position:absolute;top:36px;left:0;min-width:100%;width:max-content;max-width:260px;background:#fff;border:1px solid #d7dee8;border-radius:var(--radius-sm);box-shadow:var(--shadow-md);max-height:230px;overflow:auto;z-index:30;padding:6px}
+.mselpanel.open{display:block}
+.mselrow{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:6px;font-size:10.5px;cursor:pointer;white-space:nowrap}
+.mselrow:hover{background:var(--line-soft)}
+.mselrow input{width:auto;height:auto}
+.mselactions{display:flex;justify-content:space-between;gap:10px;padding:2px 6px 8px;border-bottom:1px solid var(--line-soft);margin-bottom:4px}
+.mselactions a{font-size:9px;color:var(--blue);cursor:pointer;font-weight:700;text-decoration:none}
+
 @media(max-width:1050px){.filters{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}.kpis{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){.filters,.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.wide{grid-column:auto}.header{flex-direction:column;align-items:flex-start;gap:8px}}
 </style></head><body>
@@ -116,7 +126,7 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 <div><label>Quarter</label><select id="q"></select></div>
 <div><label>Month</label><select id="month"></select></div>
 <div><label>Publishing Date</label><select id="date"></select></div>
-<div><label>Edition (BU)</label><select id="edition"></select></div>
+<div class="mselwrap"><label>Edition (BU)</label><button type="button" class="mselbtn" id="editionBtn">All editions (BU)</button><div class="mselpanel" id="editionPanel"></div></div>
 <div><label>Feature / Sub-category</label><select id="feature"></select></div>
 <div><label>J Code / Client</label><input id="search" placeholder="Search advertiser, client, J code…"></div>
 <div><label>&nbsp;</label><button id="reset">Reset</button></div>
@@ -164,7 +174,12 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8w7ZTfjqqKSMUTSDsUL02ScivPwxdo8k9VhfmFgfvPv29OalrwOH-32BaR1w8PsyCVQGCyzupGaqW/pub?output=csv";
 
 let DATA = [];
-const S={fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:"ALL",feature:"ALL",search:"",jacket:null};
+const S={fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:[],feature:"ALL",search:"",jacket:null};
+
+/* ---------- lightweight IndexedDB cache (stale-while-revalidate) ---------- */
+const IDB_NAME="featureAnalyticsCacheV1", IDB_STORE="rows";
+function idbGet(key){return new Promise(res=>{try{const rq=indexedDB.open(IDB_NAME,1);rq.onupgradeneeded=()=>rq.result.createObjectStore(IDB_STORE);rq.onsuccess=()=>{const tx=rq.result.transaction(IDB_STORE,"readonly");const g=tx.objectStore(IDB_STORE).get(key);g.onsuccess=()=>res(g.result||null);g.onerror=()=>res(null);};rq.onerror=()=>res(null);}catch(e){res(null);}});}
+function idbSet(key,val){try{const rq=indexedDB.open(IDB_NAME,1);rq.onupgradeneeded=()=>rq.result.createObjectStore(IDB_STORE);rq.onsuccess=()=>{const tx=rq.result.transaction(IDB_STORE,"readwrite");tx.objectStore(IDB_STORE).put(val,key);};}catch(e){}}
 const $=x=>document.getElementById(x), uniq=a=>[...new Set(a.filter(Boolean))];
 const money=n=>"₹"+Math.round(n).toLocaleString("en-IN");
 const key=r=>[r.date,r.edition,r.feature,r.jcode].join("¦");
@@ -203,11 +218,23 @@ function parseDMY(d){
 }
 
 async function loadData(){
-  $("loadingBox").classList.remove("hidden");
-  $("errorBox").classList.add("hidden");
-  $("app").classList.add("hidden");
-  $("statusText").textContent="Loading data…";
   $("statusPill").classList.remove("err");
+
+  const cached = await idbGet("rows");
+  if(cached && cached.length){
+    DATA = cached;
+    $("loadingBox").classList.add("hidden");
+    $("errorBox").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    $("statusText").textContent = DATA.length.toLocaleString("en-IN") + " records (cached) — refreshing…";
+    refresh(); render();
+  }else{
+    $("loadingBox").classList.remove("hidden");
+    $("errorBox").classList.add("hidden");
+    $("app").classList.add("hidden");
+    $("statusText").textContent="Loading data…";
+  }
+
   try{
     const res = await fetch(SHEET_CSV_URL, {cache:"no-store"});
     if(!res.ok) throw new Error("HTTP "+res.status);
@@ -256,17 +283,25 @@ async function loadData(){
     }
     if(!out.length) throw new Error("No usable rows found in feed");
     DATA = out;
+    idbSet("rows", out);
     $("loadingBox").classList.add("hidden");
+    $("errorBox").classList.add("hidden");
     $("app").classList.remove("hidden");
     $("statusText").textContent = DATA.length.toLocaleString("en-IN") + " records live";
     refresh(); render();
   }catch(err){
     console.error(err);
-    $("loadingBox").classList.add("hidden");
-    $("errorBox").classList.remove("hidden");
-    $("errorDetail").textContent = "Details: " + err.message;
-    $("statusText").textContent = "Data feed error";
-    $("statusPill").classList.add("err");
+    if(DATA.length){
+      // Keep showing the cached data already on screen; just flag that the live refresh failed.
+      $("statusText").textContent = "Live refresh failed — showing last cached data";
+      $("statusPill").classList.add("err");
+    }else{
+      $("loadingBox").classList.add("hidden");
+      $("errorBox").classList.remove("hidden");
+      $("errorDetail").textContent = "Details: " + err.message;
+      $("statusText").textContent = "Data feed error";
+      $("statusPill").classList.add("err");
+    }
   }
 }
 
@@ -275,10 +310,35 @@ function opt(id,vals,label="All"){let s=$(id),old=s.value;s.innerHTML=`<option v
 function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function filter(ignore=""){return DATA.filter(r=>{
 if(ignore!="fy"&&S.fy!="ALL"&&r.fy!=S.fy)return false;if(ignore!="q"&&S.q!="ALL"&&r.quarter!=S.q)return false;if(ignore!="month"&&S.month!="ALL"&&r.month!=S.month)return false;if(ignore!="date"&&S.date!="ALL"&&r.date!=S.date)return false;
-if(S.edition!="ALL"&&r.edition!=S.edition) return false;if(S.feature!="ALL"&&r.feature!=S.feature)return false;
+if(S.edition.length&&!S.edition.includes(r.edition)) return false;if(S.feature!="ALL"&&r.feature!=S.feature)return false;
 if(S.search&&!`${r.jcode} ${r.client} ${r.advertiser}`.toLowerCase().includes(S.search.toLowerCase()))return false;return true})}
-function refresh(){opt("fy",uniq(DATA.map(r=>r.fy)).sort());let a=filter("q");opt("q",uniq(a.map(r=>r.quarter)).sort());a=filter("month");opt("month",uniq(a.map(r=>r.month)).sort((x,y)=>FQ_MONTHS.indexOf(x)-FQ_MONTHS.indexOf(y)));a=filter("date");opt("date",uniq(a.map(r=>r.date)).sort());a=filter("");opt("edition",uniq(a.map(r=>r.edition)).sort());opt("feature",uniq(a.map(r=>r.feature)).sort(),"All features / sub-categories");
-["fy","q","month","date","edition","feature"].forEach(id=>$(id).value=S[id])}
+function refresh(){opt("fy",uniq(DATA.map(r=>r.fy)).sort());let a=filter("q");opt("q",uniq(a.map(r=>r.quarter)).sort());a=filter("month");opt("month",uniq(a.map(r=>r.month)).sort((x,y)=>FQ_MONTHS.indexOf(x)-FQ_MONTHS.indexOf(y)));a=filter("date");opt("date",uniq(a.map(r=>r.date)).sort());a=filter("");buildEditionMsel(uniq(a.map(r=>r.edition)).sort());opt("feature",uniq(a.map(r=>r.feature)).sort(),"All features / sub-categories");
+["fy","q","month","date","feature"].forEach(id=>$(id).value=S[id])}
+
+/* ---------- BU multi-select dropdown ---------- */
+function buildEditionMsel(vals){
+  S.edition = S.edition.filter(v=>vals.includes(v));
+  const panel=$("editionPanel");
+  panel.innerHTML = `<div class="mselactions"><a id="editionAll">Select all</a><a id="editionNone">Clear</a></div>`
+    + vals.map(v=>`<label class="mselrow"><input type="checkbox" value="${esc(v)}" ${S.edition.includes(v)?"checked":""}> ${esc(v)}</label>`).join("");
+  panel.querySelectorAll("input[type=checkbox]").forEach(cb=>{
+    cb.onchange=()=>{
+      if(cb.checked) S.edition.push(cb.value); else S.edition=S.edition.filter(v=>v!==cb.value);
+      updateEditionBtn(); refresh(); render();
+    };
+  });
+  $("editionAll").onclick=()=>{S.edition=[...vals]; refresh(); render();};
+  $("editionNone").onclick=()=>{S.edition=[]; refresh(); render();};
+  updateEditionBtn();
+}
+function updateEditionBtn(){
+  const btn=$("editionBtn");
+  if(!S.edition.length) btn.textContent="All editions (BU)";
+  else if(S.edition.length===1) btn.textContent=S.edition[0];
+  else btn.textContent=S.edition.length+" editions selected";
+}
+$("editionBtn").onclick=e=>{e.stopPropagation(); $("editionPanel").classList.toggle("open");};
+document.addEventListener("click",e=>{if(!$("editionPanel").contains(e.target) && e.target!==$("editionBtn")) $("editionPanel").classList.remove("open");});
 function ag(rows,k,rev=false){let m={};rows.forEach(r=>{let x=r[k]||"NA";if(!m[x])m[x]={n:0,rev:0};m[x].n++;m[x].rev+=r.revenue});return Object.entries(m).sort((a,b)=>rev?b[1].rev-a[1].rev:b[1].n-a[1].n)}
 function bars(id,a,rev=false,click=null){let max=Math.max(1,...a.map(x=>rev?x[1].rev:x[1].n));$(id).innerHTML=a.slice(0,18).map(x=>`<div class="bar" data-v="${esc(x[0])}"><div class="bn">${esc(x[0])}</div><div class="track"><div class="fill" style="width:${(100*(rev?x[1].rev:x[1].n)/max)}%"></div></div><div class="bv">${rev?money(x[1].rev):x[1].n}</div></div>`).join("");if(click)[...$(id).children].forEach(e=>e.onclick=()=>{S[click]=e.dataset.v;refresh();render()})}
 function donut(rows){let a=ag(rows,"jacket"),tot=rows.length||1,cols=["#2563eb","#0d9488","#d97706","#7c3aed","#16a34a","#dc2626"],ang=-90,p="";const cx=75,cy=75,r=50,R=70,pol=(z,q)=>[cx+q*Math.cos(z*Math.PI/180),cy+q*Math.sin(z*Math.PI/180)];a.forEach((x,i)=>{let z=x[1].n/tot*360,b=ang+z,p1=pol(ang,r),p2=pol(b,r),p3=pol(b,R),p4=pol(ang,R),L=z>180?1:0;p+=`<path data-v="${esc(x[0])}" d="M${p1}A${r} ${r} 0 ${L} 1 ${p2}L${p3}A${R} ${R} 0 ${L} 0 ${p4}Z" fill="${cols[i%cols.length]}"/>`;ang=b});$("donut").innerHTML=`<svg viewBox="0 0 150 150">${p}</svg><div class="dc"><b>${tot}</b><span>records</span></div>`;$("legend").innerHTML=a.map((x,i)=>`<span data-v="${esc(x[0])}"><i class="dot" style="background:${cols[i%cols.length]}"></i>${esc(x[0])} (${x[1].n})</span>`).join("");[...$("donut").querySelectorAll("path"),...$("legend").children].forEach(e=>e.onclick=()=>{S.jacket=e.dataset.v;render()})}
@@ -290,8 +350,8 @@ let groups={};rows.forEach(r=>{let k=key(r);if(!groups[k])groups[k]={...r,record
 $("detail").innerHTML=Object.values(groups).sort((a,b)=>b.date.localeCompare(a.date)).map((g,i)=>`<tr class="mainrow" onclick="toggle(${i})"><td class="expand" id="ex${i}">+</td><td>${esc(g.dateDisplay)}</td><td>${esc(g.edition)}</td><td>${esc(g.feature)}</td><td><span class="tag">${esc(g.jcode)}</span></td><td>${new Set(g.records.map(x=>x.page)).size}</td><td>${esc(g.jacket)}</td><td class="right">${money(g.records.reduce((a,x)=>a+x.revenue,0))}</td><td>${g.records.length}</td></tr>
 <tr id="d${i}" class="detailrow"><td colspan="9"><div class="inner"><table><thead><tr><th>#</th><th>Advertiser</th><th>Client</th><th>Inventory</th><th>Size / FPHP</th><th>Page</th><th>Jacket</th><th>Rate Code</th><th>Revenue</th></tr></thead><tbody>${g.records.map((r,j)=>`<tr><td>${j+1}</td><td>${esc(r.advertiser)}</td><td>${esc(r.client)}</td><td>${esc(r.inventory)}</td><td>${esc(r.size)}</td><td>${esc(r.page)}</td><td>${esc(r.jacket)}</td><td>${esc(r.rate)}</td><td>${money(r.revenue)}</td></tr>`).join("")}</tbody></table></div></td></tr>`).join("")}
 function toggle(i){let d=$("d"+i),e=$("ex"+i),show=d.classList.toggle("show");e.textContent=show?"−":"+"}
-["fy","q","month","date","edition","feature"].forEach(id=>$(id).onchange=()=>{S[id]=$(id).value;if(id=="fy"){S.q=S.month=S.date="ALL"}if(id=="q"){S.month=S.date="ALL"}if(id=="month")S.date="ALL";S.jacket=null;refresh();render()});
-$("search").oninput=e=>{S.search=e.target.value;render()};$("reset").onclick=()=>{Object.assign(S,{fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:"ALL",feature:"ALL",search:"",jacket:null});$("search").value="";refresh();render()};
+["fy","q","month","date","feature"].forEach(id=>$(id).onchange=()=>{S[id]=$(id).value;if(id=="fy"){S.q=S.month=S.date="ALL"}if(id=="q"){S.month=S.date="ALL"}if(id=="month")S.date="ALL";S.jacket=null;refresh();render()});
+$("search").oninput=e=>{S.search=e.target.value;render()};$("reset").onclick=()=>{Object.assign(S,{fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:[],feature:"ALL",search:"",jacket:null});$("search").value="";refresh();render()};
 $("retryBtn").onclick=loadData;
 
 loadData();
