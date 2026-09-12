@@ -96,7 +96,8 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 .hidden{display:none !important}
 
 .mselwrap{position:relative}
-.mselbtn{text-align:left;cursor:pointer;background:#fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%2364748b" d="M7 10l5 5 5-5z"/></svg>') no-repeat right 8px center;background-size:14px;padding-right:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mselbtn{text-align:left;cursor:pointer;border:1px solid #d7dee8;color:var(--text);font-weight:400;letter-spacing:normal;background:#fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%2364748b" d="M7 10l5 5 5-5z"/></svg>') no-repeat right 8px center;background-size:14px;padding-right:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mselbtn:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
 .mselpanel{display:none;position:absolute;top:36px;left:0;min-width:100%;width:max-content;max-width:260px;background:#fff;border:1px solid #d7dee8;border-radius:var(--radius-sm);box-shadow:var(--shadow-md);max-height:230px;overflow:auto;z-index:30;padding:6px}
 .mselpanel.open{display:block}
 .mselrow{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:6px;font-size:10.5px;cursor:pointer;white-space:nowrap}
@@ -104,6 +105,10 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 .mselrow input{width:auto;height:auto}
 .mselactions{display:flex;justify-content:space-between;gap:10px;padding:2px 6px 8px;border-bottom:1px solid var(--line-soft);margin-bottom:4px}
 .mselactions a{font-size:9px;color:var(--blue);cursor:pointer;font-weight:700;text-decoration:none}
+.mselsearch{width:100%;height:28px;font-size:10.5px;padding:0 8px;border:1px solid #d7dee8;border-radius:6px;margin:0 0 6px;box-sizing:border-box}
+.mselsearch:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.mselrow.hide{display:none}
+.mselempty{padding:8px 6px;font-size:10px;color:var(--muted-2);text-align:center}
 
 @media(max-width:1050px){.filters{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}.kpis{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){.filters,.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.wide{grid-column:auto}.header{flex-direction:column;align-items:flex-start;gap:8px}}
@@ -308,19 +313,22 @@ async function loadData(){
 /* ---------- filter / aggregate / render (unchanged logic) ---------- */
 function opt(id,vals,label="All"){let s=$(id),old=s.value;s.innerHTML=`<option value="ALL">${label}</option>`;vals.forEach(v=>s.innerHTML+=`<option>${esc(v)}</option>`);if(vals.includes(old))s.value=old;else s.value="ALL"}
 function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-function filter(ignore=""){return DATA.filter(r=>{
-if(ignore!="fy"&&S.fy!="ALL"&&r.fy!=S.fy)return false;if(ignore!="q"&&S.q!="ALL"&&r.quarter!=S.q)return false;if(ignore!="month"&&S.month!="ALL"&&r.month!=S.month)return false;if(ignore!="date"&&S.date!="ALL"&&r.date!=S.date)return false;
-if(S.edition.length&&!S.edition.includes(r.edition)) return false;if(S.feature!="ALL"&&r.feature!=S.feature)return false;
+function filter(ignore=""){const skip=ignore?[ignore]:[];return DATA.filter(r=>{
+if(!skip.includes("fy")&&S.fy!="ALL"&&r.fy!=S.fy)return false;if(!skip.includes("q")&&S.q!="ALL"&&r.quarter!=S.q)return false;if(!skip.includes("month")&&S.month!="ALL"&&r.month!=S.month)return false;if(!skip.includes("date")&&S.date!="ALL"&&r.date!=S.date)return false;
+if(!skip.includes("edition")&&S.edition.length&&!S.edition.includes(r.edition)) return false;if(!skip.includes("feature")&&S.feature!="ALL"&&r.feature!=S.feature)return false;
 if(S.search&&!`${r.jcode} ${r.client} ${r.advertiser}`.toLowerCase().includes(S.search.toLowerCase()))return false;return true})}
-function refresh(){opt("fy",uniq(DATA.map(r=>r.fy)).sort());let a=filter("q");opt("q",uniq(a.map(r=>r.quarter)).sort());a=filter("month");opt("month",uniq(a.map(r=>r.month)).sort((x,y)=>FQ_MONTHS.indexOf(x)-FQ_MONTHS.indexOf(y)));a=filter("date");opt("date",uniq(a.map(r=>r.date)).sort());a=filter("");buildEditionMsel(uniq(a.map(r=>r.edition)).sort());opt("feature",uniq(a.map(r=>r.feature)).sort(),"All features / sub-categories");
+function refresh(){opt("fy",uniq(DATA.map(r=>r.fy)).sort());let a=filter("q");opt("q",uniq(a.map(r=>r.quarter)).sort());a=filter("month");opt("month",uniq(a.map(r=>r.month)).sort((x,y)=>FQ_MONTHS.indexOf(x)-FQ_MONTHS.indexOf(y)));a=filter("date");opt("date",uniq(a.map(r=>r.date)).sort());a=filter("edition");buildEditionMsel(uniq(a.map(r=>r.edition)).sort());a=filter("");opt("feature",uniq(a.map(r=>r.feature)).sort(),"All features / sub-categories");
 ["fy","q","month","date","feature"].forEach(id=>$(id).value=S[id])}
 
 /* ---------- BU multi-select dropdown ---------- */
+let editionSearchQuery="";
 function buildEditionMsel(vals){
   S.edition = S.edition.filter(v=>vals.includes(v));
   const panel=$("editionPanel");
   panel.innerHTML = `<div class="mselactions"><a id="editionAll">Select all</a><a id="editionNone">Clear</a></div>`
-    + vals.map(v=>`<label class="mselrow"><input type="checkbox" value="${esc(v)}" ${S.edition.includes(v)?"checked":""}> ${esc(v)}</label>`).join("");
+    + `<input type="text" class="mselsearch" id="editionSearch" placeholder="Search BU…" value="${esc(editionSearchQuery)}">`
+    + `<div id="editionRows">` + vals.map(v=>`<label class="mselrow" data-name="${esc(v.toLowerCase())}"><input type="checkbox" value="${esc(v)}" ${S.edition.includes(v)?"checked":""}> ${esc(v)}</label>`).join("")
+    + (vals.length?"":`<div class="mselempty">No BUs match current filters</div>`) + `</div>`;
   panel.querySelectorAll("input[type=checkbox]").forEach(cb=>{
     cb.onchange=()=>{
       if(cb.checked) S.edition.push(cb.value); else S.edition=S.edition.filter(v=>v!==cb.value);
@@ -329,7 +337,16 @@ function buildEditionMsel(vals){
   });
   $("editionAll").onclick=()=>{S.edition=[...vals]; refresh(); render();};
   $("editionNone").onclick=()=>{S.edition=[]; refresh(); render();};
+  const searchEl=$("editionSearch");
+  searchEl.oninput=()=>{ editionSearchQuery=searchEl.value; applyEditionSearchFilter(); };
+  applyEditionSearchFilter();
   updateEditionBtn();
+}
+function applyEditionSearchFilter(){
+  const q=editionSearchQuery.trim().toLowerCase();
+  document.querySelectorAll("#editionRows .mselrow").forEach(row=>{
+    row.classList.toggle("hide", !!q && !row.dataset.name.includes(q));
+  });
 }
 function updateEditionBtn(){
   const btn=$("editionBtn");
