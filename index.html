@@ -82,6 +82,14 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 .inner th{position:static;background:#eef2f8}
 .inner td{font-size:9px}
 
+.pagerbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:8px 2px}
+.pageinfo{font-size:9.5px;color:var(--muted)}
+.pager{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pagebtn{width:auto;height:26px;padding:0 9px;font-size:10px;font-weight:600;border-radius:6px;background:#fff;color:var(--navy-2);border:1px solid #d7dee8}
+.pagebtn:hover:not(:disabled){background:var(--line-soft)}
+.pagebtn.active{background:linear-gradient(120deg,var(--navy-2),var(--navy));color:#fff;border-color:transparent}
+.pagebtn:disabled{opacity:.4;cursor:not-allowed}
+.pagegap{color:var(--muted-2);font-size:10px;padding:0 2px}
 .signal{line-height:1.95;font-size:10px;color:#334155}
 .signal b{color:var(--navy)}
 .foot{font-size:9px;color:#93a0b3;margin-top:10px;text-align:center}
@@ -168,7 +176,9 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 <div class="card"><h3>Publishing-date trend</h3><div class="bars" id="tb"></div></div>
 <div class="card"><h3>Management signals</h3><div class="signal" id="signals"></div></div>
 <div class="card full"><h3>Date-wise pull-out detail <span>Revenue / Records show the group total. Click the row to expand ALL source records.</span></h3>
-<div class="tablebox"><table><thead><tr><th></th><th>Date</th><th>Edition (BU)</th><th>Feature</th><th>J Code</th><th>Pages</th><th>Jacket</th><th>Revenue</th><th>Records</th></tr></thead><tbody id="detail"></tbody></table></div></div>
+<div class="pagerbar" id="detailPagerTop"></div>
+<div class="tablebox"><table><thead><tr><th></th><th>Date</th><th>Edition (BU)</th><th>Feature</th><th>J Code</th><th>Pages</th><th>Jacket</th><th>Revenue</th><th>Records</th></tr></thead><tbody id="detail"></tbody></table></div>
+<div class="pagerbar" id="detailPagerBottom"></div></div>
 </div>
 <div class="foot">Live data source: Google Sheets published feed. Edition column reflects each record's Business Unit (BU). Revenue is shown as reported in the source feed; individual underlying records are never collapsed or hidden when a summary row is expanded.</div>
 </div>
@@ -361,9 +371,9 @@ function sortAgg(m,rev=false){return Object.entries(m).sort((a,b)=>rev?b[1].rev-
 function ag(rows,k,rev=false){return sortAgg(aggMap(rows,k),rev)}
 function bars(id,a,rev=false,click=null){let max=Math.max(1,...a.map(x=>rev?x[1].rev:x[1].n));$(id).innerHTML=a.slice(0,18).map(x=>`<div class="bar" data-v="${esc(x[0])}"><div class="bn">${esc(x[0])}</div><div class="track"><div class="fill" style="width:${(100*(rev?x[1].rev:x[1].n)/max)}%"></div></div><div class="bv">${rev?money(x[1].rev):x[1].n}</div></div>`).join("");if(click)[...$(id).children].forEach(e=>e.onclick=()=>{S[click]=e.dataset.v;refresh();render()})}
 function donut(rows){let a=ag(rows,"jacket"),tot=rows.length||1,cols=["#2563eb","#0d9488","#d97706","#7c3aed","#16a34a","#dc2626"],ang=-90,p="";const cx=75,cy=75,r=50,R=70,pol=(z,q)=>[cx+q*Math.cos(z*Math.PI/180),cy+q*Math.sin(z*Math.PI/180)];a.forEach((x,i)=>{let z=x[1].n/tot*360,b=ang+z,p1=pol(ang,r),p2=pol(b,r),p3=pol(b,R),p4=pol(ang,R),L=z>180?1:0;p+=`<path data-v="${esc(x[0])}" d="M${p1}A${r} ${r} 0 ${L} 1 ${p2}L${p3}A${R} ${R} 0 ${L} 0 ${p4}Z" fill="${cols[i%cols.length]}"/>`;ang=b});$("donut").innerHTML=`<svg viewBox="0 0 150 150">${p}</svg><div class="dc"><b>${tot}</b><span>records</span></div>`;$("legend").innerHTML=a.map((x,i)=>`<span data-v="${esc(x[0])}"><i class="dot" style="background:${cols[i%cols.length]}"></i>${esc(x[0])} (${x[1].n})</span>`).join("");[...$("donut").querySelectorAll("path"),...$("legend").children].forEach(e=>e.onclick=()=>{S.jacket=e.dataset.v;render()})}
-const DETAIL_PAGE = 800; // rows rendered per page; "Load more" reveals the next page without a full re-render
+const DETAIL_PAGE = 800; // groups rendered per page
 let __groupList = [];
-let __detailShown = DETAIL_PAGE;
+let __detailPage = 1;
 function render(){let rows=filter("");if(S.jacket)rows=rows.filter(r=>r.jacket==S.jacket);
 const keySet=new Set(rows.map(key));
 $("kc").textContent=keySet.size;$("kr").textContent=money(rows.reduce((a,r)=>a+r.revenue,0));$("kp").textContent=keySet.size;$("ke").textContent=uniq(rows.map(r=>r.edition)).length;
@@ -374,16 +384,40 @@ bars("fb",sortAgg(featureMap,false),false,"feature");bars("rb",sortAgg(featureMa
 donut(rows);let top=sortAgg(featureMap,false)[0];$("signals").innerHTML=`• <b>Top feature:</b> ${top?esc(top[0]):"—"}<br>• <b>Special/Jacket records:</b> ${jacketRows.length}<br>• <b>Underlying records:</b> ${rows.length}<br>• <b>Decision value:</b> objective precedent by feature, J Code, edition and date.`;
 let groups={};rows.forEach(r=>{let k=key(r);if(!groups[k])groups[k]={...r,records:[]};groups[k].records.push(r)});
 __groupList=Object.values(groups).sort((a,b)=>b.date.localeCompare(a.date));
-__detailShown=DETAIL_PAGE; // reset paging whenever the underlying filtered set changes
+__detailPage=1; // reset to page 1 whenever the underlying filtered set changes
 renderDetailTable();
 }
+function goToDetailPage(p){
+  const totalPages=Math.max(1,Math.ceil(__groupList.length/DETAIL_PAGE));
+  __detailPage=Math.min(Math.max(1,p),totalPages);
+  renderDetailTable();
+  $("detail").closest(".tablebox").scrollTop=0;
+}
+function pagerHTML(totalPages){
+  if(totalPages<=1) return "";
+  const cur=__detailPage, nums=[];
+  const add=n=>{ if(n>=1 && n<=totalPages && !nums.includes(n)) nums.push(n); };
+  add(1); add(totalPages);
+  for(let n=cur-1;n<=cur+1;n++) add(n);
+  nums.sort((a,b)=>a-b);
+  let html=`<button type="button" class="pagebtn" data-p="${cur-1}" ${cur===1?"disabled":""}>‹ Prev</button>`;
+  let prev=0;
+  nums.forEach(n=>{
+    if(prev && n-prev>1) html+=`<span class="pagegap">…</span>`;
+    html+=`<button type="button" class="pagebtn${n===cur?" active":""}" data-p="${n}">${n}</button>`;
+    prev=n;
+  });
+  html+=`<button type="button" class="pagebtn" data-p="${cur+1}" ${cur===totalPages?"disabled":""}>Next ›</button>`;
+  return html;
+}
 function renderDetailTable(){
-  const shown=__groupList.slice(0,__detailShown);
-  $("detail").innerHTML=shown.map((g,i)=>`<tr class="mainrow" onclick="toggle(${i})"><td class="expand" id="ex${i}">+</td><td>${esc(g.dateDisplay)}</td><td>${esc(g.edition)}</td><td>${esc(g.feature)}</td><td><span class="tag">${esc(g.jcode)}</span></td><td>${new Set(g.records.map(x=>x.page)).size}</td><td>${esc(g.jacket)}</td><td class="right">${money(g.records.reduce((a,x)=>a+x.revenue,0))}</td><td>${g.records.length}</td></tr>
-<tr id="d${i}" class="detailrow"><td colspan="9"><div class="inner" id="inner${i}"></div></td></tr>`).join("")
-  + (__groupList.length>__detailShown?`<tr><td colspan="9" style="text-align:center;padding:12px"><button type="button" id="loadMoreBtn" style="width:auto;padding:7px 18px">Load more (${Math.min(DETAIL_PAGE,__groupList.length-__detailShown).toLocaleString("en-IN")} of ${(__groupList.length-__detailShown).toLocaleString("en-IN")} remaining)</button></td></tr>`:"");
-  const btn=$("loadMoreBtn");
-  if(btn) btn.onclick=()=>{__detailShown+=DETAIL_PAGE; renderDetailTable();};
+  const totalPages=Math.max(1,Math.ceil(__groupList.length/DETAIL_PAGE));
+  const offset=(__detailPage-1)*DETAIL_PAGE;
+  const shown=__groupList.slice(offset,offset+DETAIL_PAGE);
+  $("detail").innerHTML=shown.map((g,i)=>{const gi=offset+i;return `<tr class="mainrow" onclick="toggle(${gi})"><td class="expand" id="ex${gi}">+</td><td>${esc(g.dateDisplay)}</td><td>${esc(g.edition)}</td><td>${esc(g.feature)}</td><td><span class="tag">${esc(g.jcode)}</span></td><td>${new Set(g.records.map(x=>x.page)).size}</td><td>${esc(g.jacket)}</td><td class="right">${money(g.records.reduce((a,x)=>a+x.revenue,0))}</td><td>${g.records.length}</td></tr>
+<tr id="d${gi}" class="detailrow"><td colspan="9"><div class="inner" id="inner${gi}"></div></td></tr>`;}).join("");
+  $("detailPagerTop").innerHTML=$("detailPagerBottom").innerHTML=totalPages>1?`<span class="pageinfo">Page ${__detailPage} of ${totalPages} — groups ${(offset+1).toLocaleString("en-IN")}–${Math.min(offset+DETAIL_PAGE,__groupList.length).toLocaleString("en-IN")} of ${__groupList.length.toLocaleString("en-IN")}</span><span class="pager">${pagerHTML(totalPages)}</span>`:"";
+  document.querySelectorAll(".pagebtn").forEach(b=>{b.onclick=()=>goToDetailPage(+b.dataset.p)});
 }
 function buildInner(g){
   return `<table><thead><tr><th>#</th><th>Advertiser</th><th>Client</th><th>Inventory</th><th>Size / FPHP</th><th>Page</th><th>Jacket</th><th>Rate Code</th><th>Revenue</th></tr></thead><tbody>${g.records.map((r,j)=>`<tr><td>${j+1}</td><td>${esc(r.advertiser)}</td><td>${esc(r.client)}</td><td>${esc(r.inventory)}</td><td>${esc(r.size)}</td><td>${esc(r.page)}</td><td>${esc(r.jacket)}</td><td>${esc(r.rate)}</td><td>${money(r.revenue)}</td></tr>`).join("")}</tbody></table>`;
