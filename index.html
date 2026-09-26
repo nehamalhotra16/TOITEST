@@ -361,8 +361,9 @@ function sortAgg(m,rev=false){return Object.entries(m).sort((a,b)=>rev?b[1].rev-
 function ag(rows,k,rev=false){return sortAgg(aggMap(rows,k),rev)}
 function bars(id,a,rev=false,click=null){let max=Math.max(1,...a.map(x=>rev?x[1].rev:x[1].n));$(id).innerHTML=a.slice(0,18).map(x=>`<div class="bar" data-v="${esc(x[0])}"><div class="bn">${esc(x[0])}</div><div class="track"><div class="fill" style="width:${(100*(rev?x[1].rev:x[1].n)/max)}%"></div></div><div class="bv">${rev?money(x[1].rev):x[1].n}</div></div>`).join("");if(click)[...$(id).children].forEach(e=>e.onclick=()=>{S[click]=e.dataset.v;refresh();render()})}
 function donut(rows){let a=ag(rows,"jacket"),tot=rows.length||1,cols=["#2563eb","#0d9488","#d97706","#7c3aed","#16a34a","#dc2626"],ang=-90,p="";const cx=75,cy=75,r=50,R=70,pol=(z,q)=>[cx+q*Math.cos(z*Math.PI/180),cy+q*Math.sin(z*Math.PI/180)];a.forEach((x,i)=>{let z=x[1].n/tot*360,b=ang+z,p1=pol(ang,r),p2=pol(b,r),p3=pol(b,R),p4=pol(ang,R),L=z>180?1:0;p+=`<path data-v="${esc(x[0])}" d="M${p1}A${r} ${r} 0 ${L} 1 ${p2}L${p3}A${R} ${R} 0 ${L} 0 ${p4}Z" fill="${cols[i%cols.length]}"/>`;ang=b});$("donut").innerHTML=`<svg viewBox="0 0 150 150">${p}</svg><div class="dc"><b>${tot}</b><span>records</span></div>`;$("legend").innerHTML=a.map((x,i)=>`<span data-v="${esc(x[0])}"><i class="dot" style="background:${cols[i%cols.length]}"></i>${esc(x[0])} (${x[1].n})</span>`).join("");[...$("donut").querySelectorAll("path"),...$("legend").children].forEach(e=>e.onclick=()=>{S.jacket=e.dataset.v;render()})}
-const DETAIL_CAP = 800; // hard cap on rendered summary rows to keep the DOM light; refine filters to see more
+const DETAIL_PAGE = 800; // rows rendered per page; "Load more" reveals the next page without a full re-render
 let __groupList = [];
+let __detailShown = DETAIL_PAGE;
 function render(){let rows=filter("");if(S.jacket)rows=rows.filter(r=>r.jacket==S.jacket);
 const keySet=new Set(rows.map(key));
 $("kc").textContent=keySet.size;$("kr").textContent=money(rows.reduce((a,r)=>a+r.revenue,0));$("kp").textContent=keySet.size;$("ke").textContent=uniq(rows.map(r=>r.edition)).length;
@@ -373,10 +374,17 @@ bars("fb",sortAgg(featureMap,false),false,"feature");bars("rb",sortAgg(featureMa
 donut(rows);let top=sortAgg(featureMap,false)[0];$("signals").innerHTML=`• <b>Top feature:</b> ${top?esc(top[0]):"—"}<br>• <b>Special/Jacket records:</b> ${jacketRows.length}<br>• <b>Underlying records:</b> ${rows.length}<br>• <b>Decision value:</b> objective precedent by feature, J Code, edition and date.`;
 let groups={};rows.forEach(r=>{let k=key(r);if(!groups[k])groups[k]={...r,records:[]};groups[k].records.push(r)});
 __groupList=Object.values(groups).sort((a,b)=>b.date.localeCompare(a.date));
-const shown=__groupList.slice(0,DETAIL_CAP);
-$("detail").innerHTML=shown.map((g,i)=>`<tr class="mainrow" onclick="toggle(${i})"><td class="expand" id="ex${i}">+</td><td>${esc(g.dateDisplay)}</td><td>${esc(g.edition)}</td><td>${esc(g.feature)}</td><td><span class="tag">${esc(g.jcode)}</span></td><td>${new Set(g.records.map(x=>x.page)).size}</td><td>${esc(g.jacket)}</td><td class="right">${money(g.records.reduce((a,x)=>a+x.revenue,0))}</td><td>${g.records.length}</td></tr>
+__detailShown=DETAIL_PAGE; // reset paging whenever the underlying filtered set changes
+renderDetailTable();
+}
+function renderDetailTable(){
+  const shown=__groupList.slice(0,__detailShown);
+  $("detail").innerHTML=shown.map((g,i)=>`<tr class="mainrow" onclick="toggle(${i})"><td class="expand" id="ex${i}">+</td><td>${esc(g.dateDisplay)}</td><td>${esc(g.edition)}</td><td>${esc(g.feature)}</td><td><span class="tag">${esc(g.jcode)}</span></td><td>${new Set(g.records.map(x=>x.page)).size}</td><td>${esc(g.jacket)}</td><td class="right">${money(g.records.reduce((a,x)=>a+x.revenue,0))}</td><td>${g.records.length}</td></tr>
 <tr id="d${i}" class="detailrow"><td colspan="9"><div class="inner" id="inner${i}"></div></td></tr>`).join("")
-+ (__groupList.length>DETAIL_CAP?`<tr><td colspan="9" style="text-align:center;color:#94a3b8;padding:10px">Showing first ${DETAIL_CAP.toLocaleString("en-IN")} of ${__groupList.length.toLocaleString("en-IN")} groups — narrow the filters above to see the rest.</td></tr>`:"")}
+  + (__groupList.length>__detailShown?`<tr><td colspan="9" style="text-align:center;padding:12px"><button type="button" id="loadMoreBtn" style="width:auto;padding:7px 18px">Load more (${Math.min(DETAIL_PAGE,__groupList.length-__detailShown).toLocaleString("en-IN")} of ${(__groupList.length-__detailShown).toLocaleString("en-IN")} remaining)</button></td></tr>`:"");
+  const btn=$("loadMoreBtn");
+  if(btn) btn.onclick=()=>{__detailShown+=DETAIL_PAGE; renderDetailTable();};
+}
 function buildInner(g){
   return `<table><thead><tr><th>#</th><th>Advertiser</th><th>Client</th><th>Inventory</th><th>Size / FPHP</th><th>Page</th><th>Jacket</th><th>Rate Code</th><th>Revenue</th></tr></thead><tbody>${g.records.map((r,j)=>`<tr><td>${j+1}</td><td>${esc(r.advertiser)}</td><td>${esc(r.client)}</td><td>${esc(r.inventory)}</td><td>${esc(r.size)}</td><td>${esc(r.page)}</td><td>${esc(r.jacket)}</td><td>${esc(r.rate)}</td><td>${money(r.revenue)}</td></tr>`).join("")}</tbody></table>`;
 }
