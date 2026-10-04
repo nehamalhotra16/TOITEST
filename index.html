@@ -23,7 +23,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:12px/1.45 "Segoe UI",-
 
 .wrap{max-width:1560px;margin:auto;padding:16px 18px 30px}
 
-.filters{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 14px 12px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.15fr 1.5fr 1.15fr 90px;gap:10px;box-shadow:var(--shadow)}
+.filters{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 14px 12px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.15fr 1.5fr 1.15fr 1fr 90px;gap:10px;box-shadow:var(--shadow)}
 label{display:block;color:var(--muted);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.45px;margin-bottom:5px}
 select,input,button{height:32px;border:1px solid #d7dee8;border-radius:var(--radius-sm);background:#fff;color:var(--text);padding:0 9px;font-size:11px;width:100%;transition:border-color .15s,box-shadow .15s}
 select:focus,input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
@@ -32,7 +32,7 @@ button:hover{filter:brightness(1.08)}
 .help{color:var(--muted);font-size:10px;margin:10px 2px 4px;display:flex;align-items:center;gap:6px}
 .help svg{flex:none;opacity:.6}
 
-.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:12px 0}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
 .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--blue),var(--teal))}
 .kl{font-size:9px;color:var(--muted);font-weight:750;text-transform:uppercase;letter-spacing:.4px}
@@ -82,14 +82,6 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 .inner th{position:static;background:#eef2f8}
 .inner td{font-size:9px}
 
-.pagerbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:8px 2px}
-.pageinfo{font-size:9.5px;color:var(--muted)}
-.pager{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.pagebtn{width:auto;height:26px;padding:0 9px;font-size:10px;font-weight:600;border-radius:6px;background:#fff;color:var(--navy-2);border:1px solid #d7dee8}
-.pagebtn:hover:not(:disabled){background:var(--line-soft)}
-.pagebtn.active{background:linear-gradient(120deg,var(--navy-2),var(--navy));color:#fff;border-color:transparent}
-.pagebtn:disabled{opacity:.4;cursor:not-allowed}
-.pagegap{color:var(--muted-2);font-size:10px;padding:0 2px}
 .signal{line-height:1.95;font-size:10px;color:#334155}
 .signal b{color:var(--navy)}
 .foot{font-size:9px;color:#93a0b3;margin-top:10px;text-align:center}
@@ -142,6 +134,7 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 <div class="mselwrap"><label>Edition (BU)</label><button type="button" class="mselbtn" id="editionBtn">All editions (BU)</button><div class="mselpanel" id="editionPanel"></div></div>
 <div><label>Feature / Sub-category</label><select id="feature"></select></div>
 <div><label>J Code / Client</label><input id="search" placeholder="Search advertiser, client, J code…"></div>
+<div><label>Revenue Unit</label><select id="unit"><option value="CR" selected>₹ Crore</option><option value="L">₹ Lakhs</option><option value="ABS">₹ Absolute</option></select></div>
 <div><label>&nbsp;</label><button id="reset">Reset</button></div>
 </div>
 <div class="help">
@@ -163,40 +156,51 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 
 <div id="app" class="hidden">
 <div class="kpis">
-<div class="kpi"><div class="kl">Feature Count</div><div class="kv" id="kc">0</div><div class="kh">Unique J Code + date</div></div>
-<div class="kpi"><div class="kl">Revenue</div><div class="kv" id="kr">₹0</div><div class="kh">All underlying records</div></div>
-<div class="kpi"><div class="kl">Pull-out Releases</div><div class="kv" id="kp">0</div><div class="kh">Feature-date groups</div></div>
+<div class="kpi"><div class="kl">Feature Count</div><div class="kv" id="kc">0</div><div class="kh">Unique J Code + publishing date</div></div>
+<div class="kpi"><div class="kl">Net Revenue</div><div class="kv" id="kr">₹0</div><div class="kh" id="krh">All underlying records • in Crore</div></div>
 <div class="kpi"><div class="kl">Editions (BU)</div><div class="kv" id="ke">0</div><div class="kh">Selected period</div></div>
-<div class="kpi"><div class="kl">Jacket / Special</div><div class="kv" id="kj">0</div><div class="kh">Underlying records</div></div>
 </div>
 <div class="grid">
-<div class="card wide"><h3>Feature count by sub-category <span>Click a feature to filter</span></h3><div class="bars" id="fb"></div></div>
+<div class="card wide"><h3>Feature count by sub-category <span>Unique J Code + date • click to filter</span></h3><div class="bars" id="fb"></div></div>
 <div class="card"><h3>Jacket / inventory mix <span>Click a slice to filter</span></h3><div class="donutwrap" id="donut"></div><div class="legend" id="legend"></div></div>
-<div class="card"><h3>Revenue by sub-category</h3><div class="bars" id="rb"></div></div>
-<div class="card"><h3>Publishing-date trend</h3><div class="bars" id="tb"></div></div>
-<div class="card"><h3>Management signals</h3><div class="signal" id="signals"></div></div>
+<div class="card"><h3>Revenue by sub-category <span id="rbUnit">in Crore</span></h3><div class="bars" id="rb"></div></div>
+<div class="card wide"><h3>Publishing-date trend <span>Clients published per date • same client + same J Code counted once</span></h3><div class="bars" id="tb"></div></div>
 <div class="card full"><h3>Date-wise pull-out detail <span>Revenue / Records show the group total. Click the row to expand ALL source records.</span></h3>
-<div class="pagerbar" id="detailPagerTop"></div>
-<div class="tablebox"><table><thead><tr><th></th><th>Date</th><th>Edition (BU)</th><th>Feature</th><th>J Code</th><th>Pages</th><th>Jacket</th><th>Revenue</th><th>Records</th></tr></thead><tbody id="detail"></tbody></table></div>
-<div class="pagerbar" id="detailPagerBottom"></div></div>
+<div class="tablebox"><table><thead><tr><th></th><th>Date</th><th>Edition (BU)</th><th>Feature</th><th>J Code</th><th>Pages</th><th>Jacket</th><th>Revenue</th><th>Records</th></tr></thead><tbody id="detail"></tbody></table></div></div>
 </div>
 <div class="foot">Live data source: Google Sheets published feed. Edition column reflects each record's Business Unit (BU). Revenue is shown as reported in the source feed; individual underlying records are never collapsed or hidden when a summary row is expanded.</div>
 </div>
 </div>
 
 <script>
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8w7ZTfjqqKSMUTSDsUL02ScivPwxdo8k9VhfmFgfvPv29OalrwOH-32BaR1w8PsyCVQGCyzupGaqW/pub?output=csv";
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/PACX-1vR8w7ZTfjqqKSMUTSDsUL02ScivPwxdo8k9VhfmFgfvPv29OalrwOH-32BaR1w8PsyCVQGCyzupGaqW/pub?output=csv";
 
 let DATA = [];
-const S={fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:[],feature:"ALL",search:"",jacket:null};
+const S={fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:[],feature:"ALL",search:"",jacket:null,unit:"CR"};
 
 /* ---------- lightweight IndexedDB cache (stale-while-revalidate) ---------- */
 const IDB_NAME="featureAnalyticsCacheV1", IDB_STORE="rows";
 function idbGet(key){return new Promise(res=>{try{const rq=indexedDB.open(IDB_NAME,1);rq.onupgradeneeded=()=>rq.result.createObjectStore(IDB_STORE);rq.onsuccess=()=>{const tx=rq.result.transaction(IDB_STORE,"readonly");const g=tx.objectStore(IDB_STORE).get(key);g.onsuccess=()=>res(g.result||null);g.onerror=()=>res(null);};rq.onerror=()=>res(null);}catch(e){res(null);}});}
 function idbSet(key,val){try{const rq=indexedDB.open(IDB_NAME,1);rq.onupgradeneeded=()=>rq.result.createObjectStore(IDB_STORE);rq.onsuccess=()=>{const tx=rq.result.transaction(IDB_STORE,"readwrite");tx.objectStore(IDB_STORE).put(val,key);};}catch(e){}}
 const $=x=>document.getElementById(x), uniq=a=>[...new Set(a.filter(Boolean))];
-const money=n=>"₹"+Math.round(n).toLocaleString("en-IN");
-const key=r=>[r.date,r.edition,r.feature,r.jcode].join("¦");
+/* Revenue display: Crore (default) / Lakhs / Absolute */
+const UNITS={CR:{div:1e7,suf:" Cr",name:"Crore"},L:{div:1e5,suf:" L",name:"Lakhs"},ABS:{div:1,suf:"",name:"Absolute ₹"}};
+function money(n){
+  const u=UNITS[S.unit]||UNITS.CR;
+  if(S.unit==="ABS") return "₹"+Math.round(n).toLocaleString("en-IN");
+  const v=n/u.div;
+  // keep tiny per-record values visible instead of showing 0.00
+  const dp=(v!==0&&Math.abs(v)<0.01)?4:2;
+  return "₹"+v.toLocaleString("en-IN",{minimumFractionDigits:dp,maximumFractionDigits:dp})+u.suf;
+}
+const key=r=>[r.date,r.edition,r.feature,r.jcode].join("¦");            // detail-table grouping (unchanged)
+/* One feature = one J Code released on one publishing date (across all BUs / ads).
+   Rows without a J Code fall back to sub-category so they don't merge into one blank J Code. */
+const jc=r=>r.jcode||("NOJ:"+r.feature);
+const featureKey=r=>jc(r)+"¦"+r.date;
+/* One client release = client + J Code + date (repeat ads of same client in same J Code on same date count once) */
+const clientName=r=>(r.client||r.advertiser||"UNKNOWN").trim().toUpperCase();
+const clientKey=r=>clientName(r)+"¦"+jc(r);
 
 /* ---------- CSV parsing (RFC4180-ish, handles quoted commas) ---------- */
 function parseCSV(text){
@@ -366,76 +370,31 @@ function updateEditionBtn(){
 }
 $("editionBtn").onclick=e=>{e.stopPropagation(); $("editionPanel").classList.toggle("open");};
 document.addEventListener("click",e=>{if(!$("editionPanel").contains(e.target) && e.target!==$("editionBtn")) $("editionPanel").classList.remove("open");});
-function aggMap(rows,k){let m={};rows.forEach(r=>{let x=r[k]||"NA";if(!m[x])m[x]={n:0,rev:0};m[x].n++;m[x].rev+=r.revenue});return m}
-function sortAgg(m,rev=false){return Object.entries(m).sort((a,b)=>rev?b[1].rev-a[1].rev:b[1].n-a[1].n)}
-function ag(rows,k,rev=false){return sortAgg(aggMap(rows,k),rev)}
-function bars(id,a,rev=false,click=null){let max=Math.max(1,...a.map(x=>rev?x[1].rev:x[1].n));$(id).innerHTML=a.slice(0,18).map(x=>`<div class="bar" data-v="${esc(x[0])}"><div class="bn">${esc(x[0])}</div><div class="track"><div class="fill" style="width:${(100*(rev?x[1].rev:x[1].n)/max)}%"></div></div><div class="bv">${rev?money(x[1].rev):x[1].n}</div></div>`).join("");if(click)[...$(id).children].forEach(e=>e.onclick=()=>{S[click]=e.dataset.v;refresh();render()})}
+function ag(rows,k,rev=false){let m={};rows.forEach(r=>{let x=r[k]||"NA";if(!m[x])m[x]={n:0,rev:0};m[x].n++;m[x].rev+=r.revenue});return Object.entries(m).sort((a,b)=>rev?b[1].rev-a[1].rev:b[1].n-a[1].n)}
+/* count DISTINCT uniqFn(r) values within each group k  → [[group,{n}]] */
+function agUnique(rows,k,uniqFn){let m={};rows.forEach(r=>{let x=r[k]||"NA";(m[x]=m[x]||new Set()).add(uniqFn(r))});return Object.entries(m).map(([g,set])=>[g,{n:set.size}])}
+/* entries: [[label,{n|rev}]]; all rows shown (box scrolls) */
+function bars(id,a,rev=false,click=null,labelFn=null){let max=Math.max(1,...a.map(x=>rev?x[1].rev:x[1].n));$(id).innerHTML=a.length?a.map(x=>`<div class="bar" data-v="${esc(x[0])}"><div class="bn" title="${esc(labelFn?labelFn(x[0]):x[0])}">${esc(labelFn?labelFn(x[0]):x[0])}</div><div class="track"><div class="fill" style="width:${(100*(rev?x[1].rev:x[1].n)/max)}%"></div></div><div class="bv">${rev?money(x[1].rev):x[1].n.toLocaleString("en-IN")}</div></div>`).join(""):`<div class="mselempty">No data for current filters</div>`;if(click)[...$(id).children].forEach(e=>{if(e.dataset.v!==undefined)e.onclick=()=>{S[click]=e.dataset.v;refresh();render()}})}
 function donut(rows){let a=ag(rows,"jacket"),tot=rows.length||1,cols=["#2563eb","#0d9488","#d97706","#7c3aed","#16a34a","#dc2626"],ang=-90,p="";const cx=75,cy=75,r=50,R=70,pol=(z,q)=>[cx+q*Math.cos(z*Math.PI/180),cy+q*Math.sin(z*Math.PI/180)];a.forEach((x,i)=>{let z=x[1].n/tot*360,b=ang+z,p1=pol(ang,r),p2=pol(b,r),p3=pol(b,R),p4=pol(ang,R),L=z>180?1:0;p+=`<path data-v="${esc(x[0])}" d="M${p1}A${r} ${r} 0 ${L} 1 ${p2}L${p3}A${R} ${R} 0 ${L} 0 ${p4}Z" fill="${cols[i%cols.length]}"/>`;ang=b});$("donut").innerHTML=`<svg viewBox="0 0 150 150">${p}</svg><div class="dc"><b>${tot}</b><span>records</span></div>`;$("legend").innerHTML=a.map((x,i)=>`<span data-v="${esc(x[0])}"><i class="dot" style="background:${cols[i%cols.length]}"></i>${esc(x[0])} (${x[1].n})</span>`).join("");[...$("donut").querySelectorAll("path"),...$("legend").children].forEach(e=>e.onclick=()=>{S.jacket=e.dataset.v;render()})}
-const DETAIL_PAGE = 800; // groups rendered per page
-let __groupList = [];
-let __detailPage = 1;
 function render(){let rows=filter("");if(S.jacket)rows=rows.filter(r=>r.jacket==S.jacket);
-const keySet=new Set(rows.map(key));
-$("kc").textContent=keySet.size;$("kr").textContent=money(rows.reduce((a,r)=>a+r.revenue,0));$("kp").textContent=keySet.size;$("ke").textContent=uniq(rows.map(r=>r.edition)).length;
-const jacketRows=rows.filter(r=>r.jacket!="REGULAR");
-$("kj").textContent=jacketRows.length;
-const featureMap=aggMap(rows,"feature");
-bars("fb",sortAgg(featureMap,false),false,"feature");bars("rb",sortAgg(featureMap,true),true);bars("tb",ag(rows,"date").sort((a,b)=>a[0].localeCompare(b[0])).slice(-20),false);
-donut(rows);let top=sortAgg(featureMap,false)[0];$("signals").innerHTML=`• <b>Top feature:</b> ${top?esc(top[0]):"—"}<br>• <b>Special/Jacket records:</b> ${jacketRows.length}<br>• <b>Underlying records:</b> ${rows.length}<br>• <b>Decision value:</b> objective precedent by feature, J Code, edition and date.`;
+const uName=UNITS[S.unit].name;
+$("kc").textContent=new Set(rows.map(featureKey)).size.toLocaleString("en-IN");
+$("kr").textContent=money(rows.reduce((a,r)=>a+r.revenue,0));$("krh").textContent="All underlying records • in "+uName;$("rbUnit").textContent="in "+uName;
+$("ke").textContent=uniq(rows.map(r=>r.edition)).length;
+/* Feature count by sub-category: distinct J Code + date per sub-category (not raw ad records) */
+bars("fb",agUnique(rows,"feature",featureKey).sort((a,b)=>b[1].n-a[1].n||a[0].localeCompare(b[0])),false,"feature");
+bars("rb",ag(rows,"feature",true),true);
+/* Publishing-date trend: distinct client + J Code per date, chronological */
+const dLabel={};rows.forEach(r=>dLabel[r.date]=r.dateDisplay);
+bars("tb",agUnique(rows,"date",clientKey).sort((a,b)=>a[0].localeCompare(b[0])),false,null,d=>dLabel[d]||d);
+donut(rows);
 let groups={};rows.forEach(r=>{let k=key(r);if(!groups[k])groups[k]={...r,records:[]};groups[k].records.push(r)});
-__groupList=Object.values(groups).sort((a,b)=>b.date.localeCompare(a.date));
-__detailPage=1; // reset to page 1 whenever the underlying filtered set changes
-renderDetailTable();
-}
-function goToDetailPage(p){
-  const totalPages=Math.max(1,Math.ceil(__groupList.length/DETAIL_PAGE));
-  __detailPage=Math.min(Math.max(1,p),totalPages);
-  renderDetailTable();
-  $("detail").closest(".tablebox").scrollTop=0;
-}
-function pagerHTML(totalPages){
-  if(totalPages<=1) return "";
-  const cur=__detailPage, nums=[];
-  const add=n=>{ if(n>=1 && n<=totalPages && !nums.includes(n)) nums.push(n); };
-  add(1); add(totalPages);
-  for(let n=cur-1;n<=cur+1;n++) add(n);
-  nums.sort((a,b)=>a-b);
-  let html=`<button type="button" class="pagebtn" data-p="${cur-1}" ${cur===1?"disabled":""}>‹ Prev</button>`;
-  let prev=0;
-  nums.forEach(n=>{
-    if(prev && n-prev>1) html+=`<span class="pagegap">…</span>`;
-    html+=`<button type="button" class="pagebtn${n===cur?" active":""}" data-p="${n}">${n}</button>`;
-    prev=n;
-  });
-  html+=`<button type="button" class="pagebtn" data-p="${cur+1}" ${cur===totalPages?"disabled":""}>Next ›</button>`;
-  return html;
-}
-function renderDetailTable(){
-  const totalPages=Math.max(1,Math.ceil(__groupList.length/DETAIL_PAGE));
-  const offset=(__detailPage-1)*DETAIL_PAGE;
-  const shown=__groupList.slice(offset,offset+DETAIL_PAGE);
-  $("detail").innerHTML=shown.map((g,i)=>{const gi=offset+i;return `<tr class="mainrow" onclick="toggle(${gi})"><td class="expand" id="ex${gi}">+</td><td>${esc(g.dateDisplay)}</td><td>${esc(g.edition)}</td><td>${esc(g.feature)}</td><td><span class="tag">${esc(g.jcode)}</span></td><td>${new Set(g.records.map(x=>x.page)).size}</td><td>${esc(g.jacket)}</td><td class="right">${money(g.records.reduce((a,x)=>a+x.revenue,0))}</td><td>${g.records.length}</td></tr>
-<tr id="d${gi}" class="detailrow"><td colspan="9"><div class="inner" id="inner${gi}"></div></td></tr>`;}).join("");
-  $("detailPagerTop").innerHTML=$("detailPagerBottom").innerHTML=totalPages>1?`<span class="pageinfo">Page ${__detailPage} of ${totalPages} — groups ${(offset+1).toLocaleString("en-IN")}–${Math.min(offset+DETAIL_PAGE,__groupList.length).toLocaleString("en-IN")} of ${__groupList.length.toLocaleString("en-IN")}</span><span class="pager">${pagerHTML(totalPages)}</span>`:"";
-  document.querySelectorAll(".pagebtn").forEach(b=>{b.onclick=()=>goToDetailPage(+b.dataset.p)});
-}
-function buildInner(g){
-  return `<table><thead><tr><th>#</th><th>Advertiser</th><th>Client</th><th>Inventory</th><th>Size / FPHP</th><th>Page</th><th>Jacket</th><th>Rate Code</th><th>Revenue</th></tr></thead><tbody>${g.records.map((r,j)=>`<tr><td>${j+1}</td><td>${esc(r.advertiser)}</td><td>${esc(r.client)}</td><td>${esc(r.inventory)}</td><td>${esc(r.size)}</td><td>${esc(r.page)}</td><td>${esc(r.jacket)}</td><td>${esc(r.rate)}</td><td>${money(r.revenue)}</td></tr>`).join("")}</tbody></table>`;
-}
-function toggle(i){
-  let d=$("d"+i),e=$("ex"+i),show=d.classList.toggle("show");e.textContent=show?"−":"+";
-  if(show){
-    const innerDiv=$("inner"+i);
-    if(innerDiv && !innerDiv.dataset.built){
-      innerDiv.innerHTML=buildInner(__groupList[i]);
-      innerDiv.dataset.built="1";
-    }
-  }
-}
+$("detail").innerHTML=Object.values(groups).sort((a,b)=>b.date.localeCompare(a.date)).map((g,i)=>`<tr class="mainrow" onclick="toggle(${i})"><td class="expand" id="ex${i}">+</td><td>${esc(g.dateDisplay)}</td><td>${esc(g.edition)}</td><td>${esc(g.feature)}</td><td><span class="tag">${esc(g.jcode)}</span></td><td>${new Set(g.records.map(x=>x.page)).size}</td><td>${esc(g.jacket)}</td><td class="right">${money(g.records.reduce((a,x)=>a+x.revenue,0))}</td><td>${g.records.length}</td></tr>
+<tr id="d${i}" class="detailrow"><td colspan="9"><div class="inner"><table><thead><tr><th>#</th><th>Advertiser</th><th>Client</th><th>Inventory</th><th>Size / FPHP</th><th>Page</th><th>Jacket</th><th>Rate Code</th><th>Revenue</th></tr></thead><tbody>${g.records.map((r,j)=>`<tr><td>${j+1}</td><td>${esc(r.advertiser)}</td><td>${esc(r.client)}</td><td>${esc(r.inventory)}</td><td>${esc(r.size)}</td><td>${esc(r.page)}</td><td>${esc(r.jacket)}</td><td>${esc(r.rate)}</td><td>${money(r.revenue)}</td></tr>`).join("")}</tbody></table></div></td></tr>`).join("")}
+function toggle(i){let d=$("d"+i),e=$("ex"+i),show=d.classList.toggle("show");e.textContent=show?"−":"+"}
 ["fy","q","month","date","feature"].forEach(id=>$(id).onchange=()=>{S[id]=$(id).value;if(id=="fy"){S.q=S.month=S.date="ALL"}if(id=="q"){S.month=S.date="ALL"}if(id=="month")S.date="ALL";S.jacket=null;refresh();render()});
-let __searchTimer=null;
-$("search").oninput=e=>{const val=e.target.value;clearTimeout(__searchTimer);__searchTimer=setTimeout(()=>{S.search=val;render()},220)};
-$("reset").onclick=()=>{Object.assign(S,{fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:[],feature:"ALL",search:"",jacket:null});$("search").value="";editionSearchQuery="";refresh();render()};
+$("search").oninput=e=>{S.search=e.target.value;render()};$("reset").onclick=()=>{Object.assign(S,{fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:[],feature:"ALL",search:"",jacket:null}); /* revenue unit is a display preference, kept */$("search").value="";editionSearchQuery="";refresh();render()};
+$("unit").onchange=e=>{S.unit=e.target.value;render()};
 $("retryBtn").onclick=loadData;
 
 loadData();
