@@ -165,12 +165,12 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 
 <div id="app" class="hidden">
 <div class="kpis">
-<div class="kpi"><div class="kl">Feature Count</div><div class="kv" id="kc">0</div><div class="kh">Unique J Code + publishing date</div></div>
+<div class="kpi"><div class="kl">Feature Count</div><div class="kv" id="kc">0</div><div class="kh">Unique J Code + BU + Sub-category + date</div></div>
 <div class="kpi"><div class="kl">Net Revenue</div><div class="kv" id="kr">₹0</div><div class="kh" id="krh">All underlying records • in Crore</div></div>
 <div class="kpi"><div class="kl">Editions (BU)</div><div class="kv" id="ke">0</div><div class="kh">Selected period</div></div>
 </div>
 <div class="grid">
-<div class="card wide"><h3>Feature count by sub-category <span>Unique J Code + date • click to filter</span></h3><div class="bars" id="fb"></div></div>
+<div class="card wide"><h3>Feature count by sub-category <span>Unique J Code + BU + Sub-category + date • total = Feature Count • click to filter</span></h3><div class="bars" id="fb"></div></div>
 <div class="card"><h3>Jacket / inventory mix <span>Click a slice to filter</span></h3><div class="donutwrap" id="donut"></div><div class="legend" id="legend"></div></div>
 <div class="row2">
 <div class="card"><h3>Revenue by sub-category <span id="rbUnit">in Crore</span></h3><div class="bars" id="rb"></div></div>
@@ -206,9 +206,11 @@ function money(n){
 }
 const key=r=>[r.date,r.edition,r.feature,r.jcode].join("¦");            // detail-table grouping (unchanged)
 /* One feature = one J Code released on one publishing date (across all BUs / ads).
-   Rows without a J Code fall back to sub-category so they don't merge into one blank J Code. */
-const jc=r=>r.jcode||("NOJ:"+r.feature);
-const featureKey=r=>jc(r)+"¦"+r.date;
+   Same as the Excel (Feature_Count_Logic.xlsx): a blank J Code is treated as the single value "(blank)",
+   so all blank-J-Code rows on the same date count as one feature. */
+const jc=r=>r.jcode||"(blank)";
+/* Feature = J Code + BU (edition) + Sub-category + Publishing Date */
+const featureKey=r=>jc(r)+"¦"+r.edition+"¦"+r.feature+"¦"+r.date;
 /* One client release = client + J Code + date (repeat ads of same client in same J Code on same date count once) */
 const clientName=r=>(r.client||r.advertiser||"UNKNOWN").trim().toUpperCase();
 const clientKey=r=>clientName(r)+"¦"+jc(r);
@@ -393,6 +395,7 @@ $("kc").textContent=new Set(rows.map(featureKey)).size.toLocaleString("en-IN");
 $("kr").textContent=money(rows.reduce((a,r)=>a+r.revenue,0));$("krh").textContent="All underlying records • in "+uName;$("rbUnit").textContent="in "+uName;
 $("ke").textContent=uniq(rows.map(r=>r.edition)).length;
 /* Feature count by sub-category: distinct J Code + date per sub-category (not raw ad records) */
+/* Feature count by sub-category: distinct J Code + BU + Sub-category + date in each sub-category (bars add up to the KPI) */
 bars("fb",agUnique(rows,"feature",featureKey).sort((a,b)=>b[1].n-a[1].n||a[0].localeCompare(b[0])),false,"feature");
 bars("rb",ag(rows,"feature",true),true);
 /* Publishing-date trend: distinct client + J Code per date, chronological */
