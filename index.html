@@ -42,6 +42,15 @@ button:hover{filter:brightness(1.08)}
 .grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;min-width:0;box-shadow:var(--shadow)}
 .wide{grid-column:span 2}.full{grid-column:1/-1}
+.row2{grid-column:1/-1;display:grid;grid-template-columns:1.25fr 1fr;gap:10px}
+.row2 .bars{height:230px}
+.pager{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;font-size:10px;color:var(--muted)}
+.pager .pg{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.pager button{width:auto;height:26px;padding:0 9px;font-size:10px;background:#fff;color:var(--navy);border:1px solid #d7dee8;font-weight:600}
+.pager button.on{background:linear-gradient(120deg,var(--navy-2),var(--navy));color:#fff;border-color:transparent}
+.pager button:disabled{opacity:.4;cursor:default;filter:none}
+.pager select{width:auto;height:26px;font-size:10px;padding:0 6px}
+.pager .gap{padding:0 2px}
 .card h3{margin:0 0 10px;font-size:12px;font-weight:700;color:var(--navy);display:flex;align-items:baseline;justify-content:space-between}
 .card h3 span{font-weight:500;color:var(--muted-2);font-size:8.5px;text-transform:none}
 
@@ -110,8 +119,8 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 .mselrow.hide{display:none}
 .mselempty{padding:8px 6px;font-size:10px;color:var(--muted-2);text-align:center}
 
-@media(max-width:1050px){.filters{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}.kpis{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:700px){.filters,.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.wide{grid-column:auto}.header{flex-direction:column;align-items:flex-start;gap:8px}}
+@media(max-width:1050px){.filters{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}.row2{grid-template-columns:1fr 1fr}.kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.filters,.grid{grid-template-columns:1fr}.kpis{grid-template-columns:1fr 1fr}.wide{grid-column:auto}.row2{grid-template-columns:1fr}.header{flex-direction:column;align-items:flex-start;gap:8px}}
 </style></head><body>
 
 <div class="header">
@@ -163,10 +172,12 @@ td{padding:8px;border-bottom:1px solid var(--line-soft);white-space:nowrap;font-
 <div class="grid">
 <div class="card wide"><h3>Feature count by sub-category <span>Unique J Code + date • click to filter</span></h3><div class="bars" id="fb"></div></div>
 <div class="card"><h3>Jacket / inventory mix <span>Click a slice to filter</span></h3><div class="donutwrap" id="donut"></div><div class="legend" id="legend"></div></div>
+<div class="row2">
 <div class="card"><h3>Revenue by sub-category <span id="rbUnit">in Crore</span></h3><div class="bars" id="rb"></div></div>
-<div class="card wide"><h3>Publishing-date trend <span>Clients published per date • same client + same J Code counted once</span></h3><div class="bars" id="tb"></div></div>
+<div class="card"><h3>Publishing-date trend <span>Clients published per date • same client + same J Code counted once</span></h3><div class="bars" id="tb"></div></div>
+</div>
 <div class="card full"><h3>Date-wise pull-out detail <span>Revenue / Records show the group total. Click the row to expand ALL source records.</span></h3>
-<div class="tablebox"><table><thead><tr><th></th><th>Date</th><th>Edition (BU)</th><th>Feature</th><th>J Code</th><th>Pages</th><th>Jacket</th><th>Revenue</th><th>Records</th></tr></thead><tbody id="detail"></tbody></table></div></div>
+<div class="tablebox"><table><thead><tr><th></th><th>Date</th><th>Edition (BU)</th><th>Feature</th><th>J Code</th><th>Pages</th><th>Jacket</th><th>Revenue</th><th>Records</th></tr></thead><tbody id="detail"></tbody></table></div><div class="pager" id="pager"></div></div>
 </div>
 <div class="foot">Live data source: Google Sheets published feed. Edition column reflects each record's Business Unit (BU). Revenue is shown as reported in the source feed; individual underlying records are never collapsed or hidden when a summary row is expanded.</div>
 </div>
@@ -389,8 +400,23 @@ const dLabel={};rows.forEach(r=>dLabel[r.date]=r.dateDisplay);
 bars("tb",agUnique(rows,"date",clientKey).sort((a,b)=>a[0].localeCompare(b[0])),false,null,d=>dLabel[d]||d);
 donut(rows);
 let groups={};rows.forEach(r=>{let k=key(r);if(!groups[k])groups[k]={...r,records:[]};groups[k].records.push(r)});
-$("detail").innerHTML=Object.values(groups).sort((a,b)=>b.date.localeCompare(a.date)).map((g,i)=>`<tr class="mainrow" onclick="toggle(${i})"><td class="expand" id="ex${i}">+</td><td>${esc(g.dateDisplay)}</td><td>${esc(g.edition)}</td><td>${esc(g.feature)}</td><td><span class="tag">${esc(g.jcode)}</span></td><td>${new Set(g.records.map(x=>x.page)).size}</td><td>${esc(g.jacket)}</td><td class="right">${money(g.records.reduce((a,x)=>a+x.revenue,0))}</td><td>${g.records.length}</td></tr>
-<tr id="d${i}" class="detailrow"><td colspan="9"><div class="inner"><table><thead><tr><th>#</th><th>Advertiser</th><th>Client</th><th>Inventory</th><th>Size / FPHP</th><th>Page</th><th>Jacket</th><th>Rate Code</th><th>Revenue</th></tr></thead><tbody>${g.records.map((r,j)=>`<tr><td>${j+1}</td><td>${esc(r.advertiser)}</td><td>${esc(r.client)}</td><td>${esc(r.inventory)}</td><td>${esc(r.size)}</td><td>${esc(r.page)}</td><td>${esc(r.jacket)}</td><td>${esc(r.rate)}</td><td>${money(r.revenue)}</td></tr>`).join("")}</tbody></table></div></td></tr>`).join("")}
+DETAIL=Object.values(groups).sort((a,b)=>b.date.localeCompare(a.date));
+const sig=JSON.stringify({...S,unit:0});if(sig!==detailSig){detailSig=sig;PG.page=1;}
+renderDetail()}
+/* ---------- Date-wise detail pagination ---------- */
+let DETAIL=[],detailSig="";const PG={page:1,size:25};
+function renderDetail(){
+const total=DETAIL.length,pages=Math.max(1,Math.ceil(total/PG.size));PG.page=Math.min(Math.max(1,PG.page),pages);
+const start=(PG.page-1)*PG.size,slice=DETAIL.slice(start,start+PG.size);
+$("detail").innerHTML=slice.length?slice.map((g,i)=>`<tr class="mainrow" onclick="toggle(${i})"><td class="expand" id="ex${i}">+</td><td>${esc(g.dateDisplay)}</td><td>${esc(g.edition)}</td><td>${esc(g.feature)}</td><td><span class="tag">${esc(g.jcode)}</span></td><td>${new Set(g.records.map(x=>x.page)).size}</td><td>${esc(g.jacket)}</td><td class="right">${money(g.records.reduce((a,x)=>a+x.revenue,0))}</td><td>${g.records.length}</td></tr>
+<tr id="d${i}" class="detailrow"><td colspan="9"><div class="inner"><table><thead><tr><th>#</th><th>Advertiser</th><th>Client</th><th>Inventory</th><th>Size / FPHP</th><th>Page</th><th>Jacket</th><th>Rate Code</th><th>Revenue</th></tr></thead><tbody>${g.records.map((r,j)=>`<tr><td>${j+1}</td><td>${esc(r.advertiser)}</td><td>${esc(r.client)}</td><td>${esc(r.inventory)}</td><td>${esc(r.size)}</td><td>${esc(r.page)}</td><td>${esc(r.jacket)}</td><td>${esc(r.rate)}</td><td>${money(r.revenue)}</td></tr>`).join("")}</tbody></table></div></td></tr>`).join(""):`<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:18px">No records for current filters</td></tr>`;
+let nums=[],last=0;for(let p=1;p<=pages;p++){if(p===1||p===pages||Math.abs(p-PG.page)<=2){if(p-last>1)nums.push('<span class="gap">…</span>');nums.push(`<button data-p="${p}" class="${p===PG.page?"on":""}">${p}</button>`);last=p}}
+$("pager").innerHTML=`<div>Showing <b>${total?start+1:0}–${Math.min(start+PG.size,total)}</b> of <b>${total.toLocaleString("en-IN")}</b> groups</div>
+<div class="pg"><button data-p="${PG.page-1}" ${PG.page<=1?"disabled":""}>‹ Prev</button>${nums.join("")}<button data-p="${PG.page+1}" ${PG.page>=pages?"disabled":""}>Next ›</button></div>
+<div>Rows per page <select id="pgSize">${[10,25,50,100].map(n=>`<option ${n===PG.size?"selected":""}>${n}</option>`).join("")}</select></div>`;
+$("pager").querySelectorAll("button[data-p]").forEach(b=>b.onclick=()=>{PG.page=+b.dataset.p;renderDetail();$("detail").closest(".tablebox").scrollTop=0});
+$("pgSize").onchange=e=>{PG.size=+e.target.value;PG.page=1;renderDetail()};
+}
 function toggle(i){let d=$("d"+i),e=$("ex"+i),show=d.classList.toggle("show");e.textContent=show?"−":"+"}
 ["fy","q","month","date","feature"].forEach(id=>$(id).onchange=()=>{S[id]=$(id).value;if(id=="fy"){S.q=S.month=S.date="ALL"}if(id=="q"){S.month=S.date="ALL"}if(id=="month")S.date="ALL";S.jacket=null;refresh();render()});
 $("search").oninput=e=>{S.search=e.target.value;render()};$("reset").onclick=()=>{Object.assign(S,{fy:"ALL",q:"ALL",month:"ALL",date:"ALL",edition:[],feature:"ALL",search:"",jacket:null}); /* revenue unit is a display preference, kept */$("search").value="";editionSearchQuery="";refresh();render()};
